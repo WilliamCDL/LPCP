@@ -135,6 +135,40 @@ compatible (Float _ _) (Float _ _) = True
 compatible (Float _ _) (Int _ _) = True
 compatible _ _ = False
 
+-- tentativa de encadeamento expr
+termo :: ParsecT [Token] [(Token,Token)] IO(Token)
+termo = try bin_termo <|> una_termo
+
+una_termo :: ParsecT [Token] [(Token,Token)] IO(Token)
+una_termo = do
+              a <- fator
+              return (a)
+
+bin_termo :: ParsecT [Token] [(Token,Token)] IO(Token)
+bin_termo = do
+              n3 <- fator
+              result <- eval_remainingT n3
+              return (result)
+
+eval_remainingT :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
+eval_remainingT n3= do
+                      op <- ope2
+                      n4 <- fator
+                      result <- eval_remainingT (eval n3 op n4)
+                      return (result) 
+                      <|> return (n3)
+
+fator :: ParsecT [Token] [(Token,Token)] IO(Token)
+fator= try una_fator 
+
+una_fator :: ParsecT [Token] [(Token,Token)] IO(Token)
+una_fator = do
+                   a <- tipo
+                   return (a)
+
+--exp :: ParsecT [Token] [(Token,Token)] IO(Token)
+--exp= try bin_exo <|> una_termo
+
 -- funções para o avaliador de expressões
 
 expression :: ParsecT [Token] [(Token,Token)] IO(Token)
@@ -142,26 +176,26 @@ expression = try bin_expression <|> una_expression
 
 una_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 una_expression = do
-                   a <- tipo
+                   a <- termo
                    return (a)
    
 --- funções considerando associatividade à esquerda                  
 bin_expression :: ParsecT [Token] [(Token,Token)] IO(Token)
 bin_expression = do
-                   n1 <- tipo
+                   n1 <- termo
                    result <- eval_remaining n1
                    return (result)
 eval_remaining :: Token -> ParsecT [Token] [(Token,Token)] IO(Token)
 eval_remaining n1 = do
                       op <- ope
-                      n2 <- tipo
+                      n2 <- termo
                       result <- eval_remaining (eval n1 op n2)
                       return (result) 
                     <|> return (n1)   
 
 -- operações
 ope :: ParsecT [Token] [(Token,Token)] IO(Token)
-ope = try adicionar <|> diminuir <|> multiplica
+ope = try adicionar <|> diminuir 
 
 adicionar :: ParsecT [Token] [(Token,Token)] IO(Token)
 adicionar = do
@@ -172,6 +206,9 @@ diminuir :: ParsecT [Token] [(Token,Token)] IO(Token)
 diminuir = do
                 op <- minusToken
                 return(op)
+
+ope2 :: ParsecT [Token] [(Token,Token)] IO(Token)
+ope2 = try  multiplica               
 
 multiplica :: ParsecT [Token] [(Token,Token)] IO(Token)
 multiplica = do
